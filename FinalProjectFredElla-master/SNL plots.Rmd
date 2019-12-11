@@ -1,0 +1,174 @@
+---
+title: "SNL plots"
+author: "Fred & Ella"
+date: "11/23/2019"
+output: pdf_document
+---
+
+```{r, include=FALSE}
+library(ggplot2)
+library(ggrepel)
+library(stringr)
+library(tidyverse)
+library(dplyr)
+library(gridExtra)
+library(readr)
+tidy_SNL <- read_csv("~/Mscs 264 F19/Submit Section B/FinalProjectFredElla/tidy_SNL.csv")
+by_season <- read_csv("~/Mscs 264 F19/Submit Section B/FinalProjectFredElla/by_season.csv")
+```
+
+After gathering data from wikipedia and IMDB on Saturday Night Live episodes, hosts, and ratings, we are trying to discover how the perception of Saturday Night Live has changed over time. This relates to ratings and viewership. We are also seeking to find out if bringing in a popular host can positively impact the ratings. Likewise, SNL has a five timers club which is composed of any hosts who have hosted at least five times. We will be analyzing this group as well to see if there is a positive correlation between the ratings of the episode and the hosts who are in the five timers club. 
+
+Looking first at the mean IMDB ratings for each season, we compiled all of the ratings per episode within a season and took their average, to find a general trend for how ratings have changed as time has progressed. 
+
+```{r, echo = FALSE, warning = FALSE, message=FALSE}
+tidy_SNL %>%
+  group_by(season_number) %>%
+  summarise(mean_IMDB = mean(IMDBratings)) %>%
+  ggplot(aes(x = season_number, y = mean_IMDB)) +
+  geom_point() +
+  geom_smooth(se = FALSE) +
+  labs(x = "Season Number", y = "Mean IMDB Rating", title = "Rating of Each Season of SNL")
+```
+
+The IMDB ratings show that there was a dip in ratings around season 20, but ratings increased again after season 30. Ratings began quite high, and ended high, but in the middle there was a substantial dip in ratings. This shows in the IMDB ratings, but what do other ratings say?
+
+Looking now at the overall rating for each season is compiled from the TV Ratings Guide. While this data is incomplete for all seasons in the data set, ideally it will still be able to provide some insight into the ways that ratings have changed over time. 
+
+Perhaps the hosts or musical guests impact the ratings.
+Here we have lists of the best and worst rated hosts and musical guests. 
+
+```{r, echo = FALSE, warning = FALSE, message=FALSE}
+# Best Rated Hosts\Worst rated hosts
+tidy_SNL %>%
+  group_by(Host) %>%
+  summarise(mean_IMDB = mean(IMDBratings),
+            n_hosts = n()) %>%
+  arrange(desc(mean_IMDB))
+tidy_SNL %>%
+  group_by(Host) %>%
+  summarise(mean_IMDB = mean(IMDBratings),
+            n_hosts = n()) %>%
+  arrange(mean_IMDB)
+```
+
+Here we see that there seems to be no correlation between the ratings the host recieves on the show and the number of times they host.
+
+```{r, echo = FALSE, warning = FALSE, message=FALSE}
+# Best Musical Guest\Worst Musical Guest
+tidy_SNL %>%
+  group_by(Musical_Guest) %>%
+  summarise(mean_IMDB = mean(IMDBratings),
+            n_Musical = n()) %>%
+  arrange(desc(mean_IMDB))
+tidy_SNL %>%
+  group_by(Musical_Guest) %>%
+  summarise(mean_IMDB = mean(IMDBratings),
+            n_Musical = n()) %>%
+  arrange(mean_IMDB)
+```
+
+Here we see again the number of times a musical guest is invited back to host is not dependent on the rating the episode recieves.
+
+So who is invited back to the show and what is their mean rating?
+
+```{r, echo = FALSE, warning = FALSE, message=FALSE}
+
+tidy_SNL %>%
+  group_by(Host) %>%
+  summarise(mean_IMDB = mean(IMDBratings),
+            n_hosts = n()) %>%
+  arrange(desc(n_hosts))
+
+
+tidy_SNL %>%
+  group_by(Musical_Guest) %>%
+  summarise(mean_IMDB = mean(IMDBratings),
+            n_Musical = n()) %>%
+  arrange(desc(n_Musical))
+```
+
+Here we see that the Host and Musical Guest that are invited back to the show have a mean IMDB rating between 6 - 7.5.  Here we see that hosts and Musical Guests who are invited back to the show are people with more name recognition.
+
+```{r, echo = FALSE, warning = FALSE, message=FALSE}
+host_mean_IMDB <- tidy_SNL %>%
+  group_by(Host) %>%
+  summarise(mean_IMDB = mean(IMDBratings),
+            n_hosts = n()) %>%
+  arrange(desc(n_hosts))
+outliers <- host_mean_IMDB %>%
+  filter(mean_IMDB <= 4 | mean_IMDB >= 8.2)
+  
+  ggplot(data = host_mean_IMDB, aes(x = n_hosts, y = mean_IMDB, group = n_hosts)) +
+  geom_violin() +
+    geom_label_repel(aes(label = Host), data = outliers) +
+    labs(x = "Number of Times Hosted", y = "Mean IMDB Rating", title = "Likeability of Host")
+```
+
+Here plotting how many times a host is invited back we see that hosts who have only hosted one time has the greatest spread in IMDB Ratings, while the more times you are asked to host the higher mean IMDB Rating.
+
+These next plots show overall rating, 18-49 rating, and viewers in millions by season. Each of these plots show a decrease as time progresses. Especially noting that seasons 31-33 had very poor reviews and viewership. While it has improved a little since then, the reviews and quantity of viewers is nowhere near what it had been initially. 
+
+```{r, echo = FALSE, warning = FALSE, message=FALSE}
+viewers_plot <- by_season %>%
+  ggplot(aes(x = season_number, y = parse_double(`Viewers (Mil.)`)), na.rm = TRUE) +
+  geom_point(color = "dodgerblue1") +
+  geom_smooth(se = FALSE, color = "dodgerblue1") +
+  labs(x = "Season Number", y = "Viewers (Millions)")
+
+tidy_season <- tidy_SNL %>%
+  group_by(season_number) %>%
+  summarize(mean_IMDB = mean(IMDBratings), 
+            Overall_Rating = mean(parse_double(overall_rating)),
+            age_rating = mean(parse_double(`18–49 Rating`))) 
+
+IMDB_plot <- tidy_season %>%
+  ggplot(aes(x = season_number, y = mean_IMDB), na.rm = TRUE) +
+  geom_point(color = "olivedrab2") +
+  geom_smooth(se = FALSE, color = "olivedrab2") +
+  labs(y = "IMDB Score", x = "Season Number")
+
+overall_plot <- tidy_season %>%
+  ggplot(aes(x = season_number, y = Overall_Rating), na.rm = TRUE) +
+  geom_point(color = "indianred1") +
+  geom_smooth(se = FALSE, color = "indianred1") +
+  labs(y = "Overall Rating", x = "Season Number")
+
+age_plot <- tidy_season %>%
+  ggplot(aes(x = season_number, y = age_rating), na.rm = TRUE) +
+  geom_point(color = "brown") +
+  geom_smooth(se = FALSE, color = "brown") +
+  labs(x = "Season Number", y = "18-49 Rating")
+
+
+grid.arrange(IMDB_plot, overall_plot, age_plot, viewers_plot, ncol = 2)
+```
+
+This last plot shows the changes in mean IMDB rating, overall rating from TV Ratings Guide, the 18-49 rating, and viewers in millions as time has changed. Every category other than IMDB score shows a pretty consistant decrease as time has progressed. 
+
+```{r, echo = FALSE, warning = FALSE, message=FALSE}
+tidy_SNL %>%
+  ggplot(aes(x = episode_number, y = IMDBratings)) +
+  geom_point(size = 2) +
+  labs(x = "Episode", y = "IMDB Score")
+
+tidy_SNL %>%
+  filter(season_number <= 11) %>%
+  ggplot(aes(x = as_factor(season_number), y = IMDBratings)) +
+  geom_dotplot(binaxis='y', stackdir='center', dotsize = 0.5)
+
+tidy_SNL %>%
+  filter(season_number <= 22, season_number > 11) %>%
+  ggplot(aes(x = as_factor(season_number), y = IMDBratings)) +
+  geom_dotplot(binaxis='y', stackdir='center', dotsize = 0.5)
+
+tidy_SNL %>%
+  filter(season_number <= 33, season_number > 22) %>%
+  ggplot(aes(x = as_factor(season_number), y = IMDBratings)) +
+  geom_dotplot(binaxis='y', stackdir='center', dotsize = 0.5)
+
+tidy_SNL %>%
+  filter(season_number <= 44, season_number > 33) %>%
+  ggplot(aes(x = as_factor(season_number), y = IMDBratings)) +
+  geom_dotplot(binaxis='y', stackdir='center', dotsize = 0.5)
+```

@@ -1,0 +1,170 @@
+---
+title: "R Notebook"
+output: html_notebook
+editor_options: 
+  chunk_output_type: console
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+```{r}
+library(tidyverse)
+library(stringr)
+library(rvest)
+library(httr)
+```
+
+
+```{r}
+SNL130 <- read_html("https://en.wikipedia.org/wiki/List_of_Saturday_Night_Live_episodes_(seasons_1–30)#Episodes")
+host130 <- html_nodes(SNL130,".summary")
+musical_guest130 <- html_nodes(SNL130, ".vevent td:nth-child(4)")
+air_date130 <- html_nodes(SNL130, ".vevent td:nth-child(5)")
+
+html_text(host130)
+html_text(musical_guest130)
+html_text(air_date130)
+
+snl130<- tibble(Host = html_text(host130), Musical_Guest = html_text(musical_guest130), Air_Date = html_text(air_date130))
+SNL31pr <- read_html("https://en.wikipedia.org/wiki/List_of_Saturday_Night_Live_episodes#Episodes")
+host31pr <- html_nodes(SNL31pr, "td.summary")
+musical_guest31pr <- html_nodes(SNL31pr, ".vevent td:nth-child(4)")
+air_date31pr <- html_nodes(SNL31pr, ".vevent td:nth-child(5)")
+
+html_text(host31pr)
+html_text(musical_guest31pr)
+html_text(air_date31pr)
+
+snl31pr <- tibble(Host = html_text(host31pr), Musical_Guest = html_text(musical_guest31pr), Air_Date = html_text(air_date31pr))
+
+Full_SNL <- snl130 %>%
+full_join(snl31pr)
+
+Full_SNL <- Full_SNL[-c(872:881), ] #No season 45
+```
+
+```{r}
+IMDBratings <- vector("double") # 1. output
+for (i in 1:44) { 
+     url <- str_c("https://www.imdb.com/title/tt0072562/episodes?season=", as.character(i))           # 2. sequence
+    snlrat <- read_html(url)
+snlrat_nod <- html_nodes(snlrat, ".ipl-rating-star.small .ipl-rating-star__rating")
+  snl_read <- html_text(snlrat_nod)
+          IMDBratings = append(IMDBratings, snl_read)          # 3. body
+}
+IMDBratings
+
+IMDBratings <- IMDBratings[-c(37, 194)] #SNL specials nixed
+
+Full_SNL <- add_column(Full_SNL, IMDBratings)
+```
+
+```{r}
+tidy_SNL <- Full_SNL %>%
+  separate(Air_Date, into = c("date_month", "date_day", "date_year", "numeric_date"), sep = "(\\s)|,\\s") %>%
+  select(Host, Musical_Guest, IMDBratings, date_month, date_day, date_year)
+tidy_SNL$date_month <- tidy_SNL$date_month %>%
+  str_replace_all(c("January" = "01", "February" = "02", "March" = "03", "April" = "04", "May" = "05", 
+                                "June" = "06", "July" = "07", "August" = "08", "September" = "09", "October" = "10", 
+                                "November" = "11", "December" = "12"))
+season1 <- rep.int(1, 24)
+season2 <- rep.int(2, 22)
+season3 <- rep.int(3, 20)
+season4 <- rep.int(4, 20)
+season5 <- rep.int(5, 20)
+season6 <- rep.int(6, 13)
+season7 <- rep.int(7, 20)
+season8 <- rep.int(8, 20)
+season9 <- rep.int(9, 19)
+season10 <- rep.int(10, 17)
+season11 <- rep.int(11, 18)
+season12 <- rep.int(12, 20)
+season13 <- rep.int(13, 13)
+season14 <- rep.int(14, 20)
+season15 <- rep.int(15, 20)
+season16 <- rep.int(16, 20)
+season17 <- rep.int(17, 20)
+season18 <- rep.int(18, 20)
+season19 <- rep.int(19, 20)
+season20 <- rep.int(20, 20)
+season21 <- rep.int(21, 20)
+season22 <- rep.int(22, 20)
+season23 <- rep.int(23, 20)
+season24 <- rep.int(24, 19)
+season25 <- rep.int(25, 20)
+season26 <- rep.int(26, 20)
+season27 <- rep.int(27, 20)
+season28 <- rep.int(28, 20)
+season29 <- rep.int(29, 20)
+season30 <- rep.int(30, 20)
+season31 <- rep.int(31, 19)
+season32 <- rep.int(32, 20)
+season33 <- rep.int(33, 12)
+season34 <- rep.int(34, 22)
+season35 <- rep.int(35, 22)
+season36 <- rep.int(36, 22)
+season37 <- rep.int(37, 22)
+season38 <- rep.int(38, 21)
+season39 <- rep.int(39, 21)
+season40 <- rep.int(40, 21)
+season41 <- rep.int(41, 21)
+season42 <- rep.int(42, 21)
+season43 <- rep.int(43, 21)
+season44 <- rep.int(44, 20)
+tidy_SNL <- tidy_SNL[-c(872:881), ]
+
+season_number = parse_integer(c(season1, season2, season3, season4, season5, season6, season7, season8,
+                  season9, season10, season11, season12, season13, season14, season15, season16, 
+                  season17, season18, season19, season20, season21, season22, season23, season24, 
+                  season25, season26, season27, season28, season29, season30, season31, season32, 
+                  season33, season34, season35, season36, season37, season38, season39, season40, 
+                  season41, season42, season43, season44, sep = " "))
+
+episode_number = c(1:871)
+
+tidy_SNL <- add_column(tidy_SNL, season_number)
+tidy_SNL <- add_column(tidy_SNL, episode_number)
+```
+
+
+```{r}
+info <- read_html("https://en.wikipedia.org/wiki/Saturday_Night_Live")
+table <- html_nodes(info, "table")
+by_season <- html_table(table[[5]], header = TRUE, fill = TRUE) %>%
+  mutate(season_number = 1:43,
+         Overall_Rating = ifelse(`Overall Rating[170]` == "May 12, 1984", 7.4, 
+                                 `Overall Rating[170]`)) %>%
+  select(-`Overall Rating[170]`)
+```
+
+```{r}
+tidy_SNL <- tidy_SNL %>%
+  inner_join(by_season, key = "season_number") %>%
+  unite(air_date, date_month, date_day, date_year, sep = "-") %>%
+  select(Host, Musical_Guest, IMDBratings, air_date, season_number, 
+         Season, Overall_Rating, `18–49 Rating`)
+```
+
+```{r}
+five_timers <- tidy_SNL %>%
+  group_by(Host) %>%
+  summarize(n = n(),
+            avg_rating = mean(IMDBratings)) %>%
+  filter(n >= 5)
+
+
+  inner_join(by_season, key = "season_number") %>%
+  unite(air_date, date_month, date_day, date_year, sep = "-") %>%
+  select(Host, Musical_Guest, IMDBratings, air_date, season_number, 
+         Season, Overall_Rating, `18–49 Rating`)
+```
+
+```{r}
+write_csv(tidy_SNL, "~/Mscs 264 F19/Submit Section B/FinalProjectFredElla/tidy_SNL.csv")
+write_csv(by_season, "~/Mscs 264 F19/Submit Section B/FinalProjectFredElla/by_season.csv")
+write_csv(five_timers, "~/Mscs 264 F19/Submit Section B/FinalProjectFredElla/five_timers.csv")
+read_csv("~/Mscs 264 F19/Submit Section B/FinalProjectFredElla/tidy_SNL.csv")
+read_csv("~/Mscs 264 F19/Submit Section B/FinalProjectFredElla/by_season.csv")
+read_csv("~/Mscs 264 F19/Submit Section B/FinalProjectFredElla/five_timers.csv")
+```

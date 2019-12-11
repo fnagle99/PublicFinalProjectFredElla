@@ -1,0 +1,228 @@
+---
+title: "index"
+author: "Fred & Ella"
+date: "12/3/2019"
+output: md_document
+---
+
+```{r, include=FALSE}
+library(ggplot2)
+library(ggrepel)
+library(stringr)
+library(tidyverse)
+library(dplyr)
+library(gridExtra)
+library(readr)
+tidy_SNL <- read_csv("~/Mscs 264 F19/Submit Section B/FinalProjectFredElla/tidy_SNL.csv")
+by_season <- read_csv("~/Mscs 264 F19/Submit Section B/FinalProjectFredElla/by_season.csv")
+five_timers <- read_csv("~/Mscs 264 F19/Submit Section B/FinalProjectFredElla/five_timers.csv")
+```
+
+## Saturday Night Live Data and Why?
+
+After gathering data from wikipedia and IMDB on Saturday Night Live episodes, hosts, and ratings, we are trying to discover how the perception of Saturday Night Live has changed over time. This relates to ratings and viewership. We are also seeking to find out if bringing in a popular host can positively impact the ratings. Likewise, SNL has a five timers club which is composed of any hosts who have hosted at least five times. We will be analyzing this group as well to see if there is a positive correlation between the ratings of the episode and the hosts who are in the five timers club. 
+
+## How has SNL Done throughout the Years?
+
+These plots show IMDB ratings, overall rating, 18-49 rating, and viewers in millions by season. Each of these plots show a decrease as time progresses. Especially noting that seasons 31-33 had very poor reviews and viewership. While it has improved a little since then, the reviews and quantity of viewers is nowhere near what it had been initially. 
+
+```{r, echo = FALSE, warning = FALSE, message=FALSE}
+viewers_plot <- by_season %>%
+  ggplot(aes(x = season_number, y = parse_double(`Viewers (Mil.)`)), na.rm = TRUE) +
+  geom_point(color = "dodgerblue1") +
+  geom_smooth(se = FALSE, color = "dodgerblue1") +
+  labs(x = "Season Number", y = "Viewers (Millions)")
+
+tidy_season <- tidy_SNL %>%
+  group_by(season_number) %>%
+  summarize(mean_IMDB = mean(IMDBratings), 
+            Overall_Rating = mean(parse_double(overall_rating)),
+            age_rating = mean(parse_double(`18–49 Rating`))) 
+
+IMDB_plot <- tidy_season %>%
+  ggplot(aes(x = season_number, y = mean_IMDB), na.rm = TRUE) +
+  geom_point(color = "olivedrab2") +
+  geom_smooth(se = FALSE, color = "olivedrab2") +
+  labs(y = "IMDB Score", x = "Season Number")
+
+overall_plot <- tidy_season %>%
+  ggplot(aes(x = season_number, y = Overall_Rating), na.rm = TRUE) +
+  geom_point(color = "indianred1") +
+  geom_smooth(se = FALSE, color = "indianred1") +
+  labs(y = "Overall Rating", x = "Season Number")
+
+age_plot <- tidy_season %>%
+  ggplot(aes(x = season_number, y = age_rating), na.rm = TRUE) +
+  geom_point(color = "brown") +
+  geom_smooth(se = FALSE, color = "brown") +
+  labs(x = "Season Number", y = "18-49 Rating")
+
+
+grid.arrange(IMDB_plot, overall_plot, age_plot, viewers_plot, ncol = 2)
+```
+
+Theses plots shows the changes in mean IMDB rating, overall rating from TV Ratings Guide, the 18-49 rating, and viewers in millions as time has changed. Every category other than IMDB score shows a pretty consistant decrease as time has progressed.  I wonder why?  With IMDB Ratings we are able to break the ratings down to each episode in each season.
+
+## Let us break it down by Season
+
+```{r, echo = FALSE, warning = FALSE, message=FALSE}
+tidy_SNL %>%
+  ggplot(aes(x = episode_number, y = IMDBratings)) +
+  geom_point(size = 2) +
+  labs(x = "Episode", y = "IMDB Score")
+```
+
+Woah! Let us make this data more digestable!
+
+```{r, echo = FALSE, warning = FALSE, message=FALSE}
+per_season111 <- tidy_SNL %>%
+  filter(season_number <= 11) %>%
+  ggplot(aes(x = as_factor(season_number), y = IMDBratings)) +
+  geom_dotplot(binaxis='y', stackdir='center', dotsize = 0.5) +
+  labs(x = "Seasons (1 - 11)", y = "IMDB Score")
+
+per_season1222 <- tidy_SNL %>%
+  filter(season_number <= 22, season_number > 11) %>%
+  ggplot(aes(x = as_factor(season_number), y = IMDBratings)) +
+  geom_dotplot(binaxis='y', stackdir='center', dotsize = 0.5) +
+  labs(x = "Seasons (12 - 22) ", y = "IMDB Score")
+
+per_season2333 <- tidy_SNL %>%
+  filter(season_number <= 33, season_number > 22) %>%
+  ggplot(aes(x = as_factor(season_number), y = IMDBratings)) +
+  geom_dotplot(binaxis='y', stackdir='center', dotsize = 0.5) +
+  labs(x = "Seasons (23 - 33)", y = "IMDB Score")
+
+per_season3443 <- tidy_SNL %>%
+  filter(season_number <= 44, season_number > 33) %>%
+  ggplot(aes(x = as_factor(season_number), y = IMDBratings)) +
+  geom_dotplot(binaxis='y', stackdir='center', dotsize = 0.5) +
+  labs(x = "Seasons (34 - 43)", y = "IMDB Score")
+
+grid.arrange(per_season111, per_season1222, per_season2333, per_season3443, ncol = 2)
+```
+
+Here we can see that most seasons are centered within 2 ratings of their mean value.  But we can clearly see some episodes BOMBED! ... and some episodes did really well!  Let us look at some possible reasons.  
+
+## Hosts and Musical Guests
+
+Perhaps the hosts or musical guests impact the ratings?
+
+Here we have lists of the best and worst rated hosts and musical guests. 
+
+```{r, echo = FALSE, warning = FALSE, message=FALSE}
+# Best Rated Hosts\Worst rated hosts
+tidy_SNL %>%
+  group_by(Host) %>%
+  summarise(mean_IMDB = mean(IMDBratings),
+            n_hosts = n()) %>%
+  arrange(desc(mean_IMDB))
+tidy_SNL %>%
+  group_by(Host) %>%
+  summarise(mean_IMDB = mean(IMDBratings),
+            n_hosts = n()) %>%
+  arrange(mean_IMDB)
+```
+
+From theses tables we can see that people who recieve high ratings from the audience are more likely to be invited back as seen from the 5 timer Justin Timberlake.  But some of the worst hosts are also invited back as well but not as often.  We can also see hosts with the highest ratings are more reognizable names, and have less of a history of controversy.  
+
+Now let us also look at Musical Guests.
+
+```{r, echo = FALSE, warning = FALSE, message=FALSE}
+# Best Musical Guest\Worst Musical Guest
+tidy_SNL %>%
+  group_by(Musical_Guest) %>%
+  summarise(mean_IMDB = mean(IMDBratings),
+            n_Musical = n()) %>%
+  arrange(desc(mean_IMDB))
+tidy_SNL %>%
+  group_by(Musical_Guest) %>%
+  summarise(mean_IMDB = mean(IMDBratings),
+            n_Musical = n()) %>%
+  arrange(mean_IMDB)
+```
+
+Here we see again the number of times a musical guests is almost as random, where they invite back only some of the top rated musical guests, and also invite back some of the least liked musical guests.
+
+## So who is invited back to the show and what is their mean rating?
+
+```{r, echo = FALSE, warning = FALSE, message=FALSE}
+
+tidy_SNL %>%
+  group_by(Host) %>%
+  summarise(mean_IMDB = mean(IMDBratings),
+            n_hosts = n()) %>%
+  arrange(desc(n_hosts))
+
+
+tidy_SNL %>%
+  group_by(Musical_Guest) %>%
+  summarise(mean_IMDB = mean(IMDBratings),
+            n_Musical = n()) %>%
+  arrange(desc(n_Musical))
+```
+
+Here we see that the Host and Musical Guest that are invited back to the show have a mean IMDB rating between 6 - 7.5.  Here we see that hosts and Musical Guests who are invited back to the show are people with more name recognition.
+
+## Graphing the Hosts
+
+```{r, echo = FALSE, warning = FALSE, message=FALSE}
+host_mean_IMDB <- tidy_SNL %>%
+  group_by(Host) %>%
+  summarise(mean_IMDB = mean(IMDBratings),
+            n_hosts = n()) %>%
+  arrange(desc(n_hosts))
+outliers <- host_mean_IMDB %>%
+  filter(mean_IMDB <= 4 | mean_IMDB >= 8.2)
+  
+  ggplot(data = host_mean_IMDB, aes(x = n_hosts, y = mean_IMDB, group = n_hosts)) +
+  geom_violin() +
+    geom_label_repel(aes(label = Host), data = outliers) +
+    labs(x = "Number of Times Hosted", y = "Mean IMDB Rating", title = "Likeability of Host")
+```
+
+Here plotting how many times a host is invited back we see that hosts who have only hosted one time has the greatest spread in IMDB Ratings, while the more times you are asked to host the higher mean IMDB Rating and smaller the spread.
+
+## What can we learn from the 5 timers
+
+The Five Timers is when a person has hosted SNL 5 or more times.  The show has made a big deal about it over the years where when the host is hosting his fifth show the actors and some other 5 timer members have some skit congratulating the newest inductee into the 5 timers club. [link](https://youtu.be/fOsz1gNjtls)
+
+Five Timers Hosts info
+
+```{r, echo = FALSE, warning = FALSE, message=FALSE}
+five_timers %>%
+  summarise(mean_rating = mean(avg_rating),
+            median_rating = median(avg_rating),
+            sd_rating = sd(avg_rating),
+            IQR_rating = IQR(avg_rating))
+```
+
+Hosts who are not Five Timers
+
+```{r, echo = FALSE, warning = FALSE, message=FALSE}
+tidy_SNL %>%
+  anti_join(five_timers, by = "Host") %>%
+  summarise(mean_rating = mean(IMDBratings),
+            median_rating = median(IMDBratings),
+            sd_rating = sd(IMDBratings),
+            IQR_rating = IQR(IMDBratings))
+```
+
+Graph form
+
+```{r, echo = FALSE, warning = FALSE, message=FALSE}
+tidy_SNL %>%
+  group_by(Host) %>%
+  summarise(mean_IMDB = mean(IMDBratings),
+            n_hosts = n()) %>%
+  ggplot(aes(x = n_hosts>=5, y = mean_IMDB)) +
+  geom_violin() +
+  labs(x = "Hosted 5 or more times", y = "Mean IMDB Rating", title = "Not 5 Timers v 5 Timers")
+```
+
+Here we see the Five timers are marginally more likeable than the hosts who are not 5 timers.  So there are obviously more varibales than just audience rating when it comes to inviting back hosts, and giving them the prestigous 5 timer title only held by 17 people.
+
+If you want some SNL skits to watch here is Fred and Ella's favorite skits:
+
+Fred the Polar Bear sketch: [link](https://youtu.be/_wf31yBoGA4) \newline
+Ella more Cowbell sketch: [link](https://youtu.be/cVsQLlk-T0s)
